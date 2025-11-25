@@ -52,6 +52,16 @@ CASH_DRAWER_PIN=2           # Pin cho cash drawer (mặc định là 2)
 
 ## ▶️ Chạy service
 
+### Windows (Dễ nhất - Chỉ cần double-click)
+
+1. **Cài đặt dependencies lần đầu:** Double-click vào `install.bat`
+2. **Chạy service:** Double-click vào `start.bat`
+3. **Dừng service:** Double-click vào `stop.bat`
+
+Xem chi tiết: [README_WINDOWS.md](README_WINDOWS.md)
+
+### Command Line
+
 ```bash
 npm start
 ```
