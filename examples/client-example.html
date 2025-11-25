@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printer Service - Test Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .cash-drawer-btn {
+            background-color: #28a745;
+        }
+        .cash-drawer-btn:hover {
+            background-color: #218838;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖨️ Printer & Cash Drawer Service - Test Client</h1>
+        
+        <div class="section">
+            <h2>1. Health Check</h2>
+            <button onclick="checkHealth()">Kiểm tra Service</button>
+            <div id="healthStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>2. Kiểm tra Printer Status</h2>
+            <button onclick="checkPrinterStatus()">Kiểm tra Trạng thái</button>
+            <div id="printerStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>3. In hóa đơn</h2>
+            <label for="alignSelect">Căn lề:</label>
+            <select id="alignSelect">
+                <option value="left">Trái</option>
+                <option value="center">Giữa</option>
+                <option value="right">Phải</option>
+            </select>
+            
+            <label for="printText">Nội dung in:</label>
+            <textarea id="printText" placeholder="Nhập nội dung cần in...">CỬA HÀNG ABC
+123 Đường XYZ, Quận 1, TP.HCM
+Tel: 0123456789
+
+═══════════════════════════════
+          HÓA ĐƠN BÁN HÀNG
+═══════════════════════════════
+Ngày: 01/01/2024 10:30:00
+Hóa đơn số: HD001
+
+───────────────────────────────
+STT  Tên sản phẩm      Số lượng  Thành tiền
+───────────────────────────────
+1    Sản phẩm A        2         200.000đ
+2    Sản phẩm B        1         100.000đ
+───────────────────────────────
+TỔNG CỘNG:                       300.000đ
+TIỀN NHẬN:                       300.000đ
+TIỀN THỐI:                       0đ
+
+═══════════════════════════════
+      Cảm ơn quý khách!
+═══════════════════════════════</textarea>
+            
+            <button onclick="printReceipt()">🖨️ In hóa đơn</button>
+            <div id="printStatus"></div>
+        </div>
+
+        <div class="section">
+            <h2>4. Mở Cash Drawer (Ngăn kéo tiền)</h2>
+            <button class="cash-drawer-btn" onclick="openCashDrawer()">💰 Mở Cash Drawer</button>
+            <div id="cashDrawerStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        async function checkHealth() {
+            const statusDiv = document.getElementById('healthStatus');
+            statusDiv.innerHTML = '<div class="status info">Đang kiểm tra...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Service đang chạy bình thường<br>
+                            Service: ${data.service}<br>
+                            Time: ${new Date(data.timestamp).toLocaleString('vi-VN')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Không thể kết nối đến service<br>
+                        Lỗi: ${error.message}<br>
+                        Đảm bảo service đang chạy tại ${API_BASE}
+                    </div>
+                `;
+            }
+        }
+
+        async function checkPrinterStatus() {
+            const statusDiv = document.getElementById('printerStatus');
+            statusDiv.innerHTML = '<div class="status info">Đang kiểm tra...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/printer/status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const status = data.status;
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Printer Status<br>
+                            Loại: ${status.printerType}<br>
+                            Giao tiếp: ${status.interface}<br>
+                            IP: ${status.connectionParams.ip}:${status.connectionParams.port}<br>
+                            Đã khởi tạo: ${status.initialized ? 'Có' : 'Không'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Lỗi khi kiểm tra trạng thái<br>
+                        Lỗi: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function printReceipt() {
+            const statusDiv = document.getElementById('printStatus');
+            const text = document.getElementById('printText').value;
+            const align = document.getElementById('alignSelect').value;
+            
+            if (!text.trim()) {
+                statusDiv.innerHTML = '<div class="status error">❌ Vui lòng nhập nội dung cần in</div>';
+                return;
+            }
+            
+            statusDiv.innerHTML = '<div class="status info">Đang in...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        align: align,
+                        type: 'text'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ In thành công!<br>
+                            Thời gian: ${new Date(data.timestamp).toLocaleString('vi-VN')}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ In thất bại<br>
+                            Lỗi: ${data.error || data.message}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Lỗi khi in<br>
+                        Lỗi: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function openCashDrawer() {
+            const statusDiv = document.getElementById('cashDrawerStatus');
+            statusDiv.innerHTML = '<div class="status info">Đang mở cash drawer...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/cash-drawer/open`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.innerHTML = `
+                        <div class="status success">
+                            ✅ Cash drawer đã được mở!<br>
+                            Thời gian: ${new Date(data.timestamp).toLocaleString('vi-VN')}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="status error">
+                            ❌ Không thể mở cash drawer<br>
+                            Lỗi: ${data.error || data.message}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Lỗi khi mở cash drawer<br>
+                        Lỗi: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto check health on load
+        window.addEventListener('load', () => {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>
+

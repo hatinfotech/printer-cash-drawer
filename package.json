@@ -1,0 +1,31 @@
+{
+  "name": "printer-cash-drawer-service",
+  "version": "1.0.0",
+  "description": "Local service adapter for POS web app to print receipts and open cash drawer",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "printer",
+    "cash-drawer",
+    "pos",
+    "thermal-printer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-thermal-printer": "^4.4.0",
+    "escpos": "^3.0.0-alpha.6",
+    "escpos-usb": "^3.0.0-alpha.4",
+    "usb": "^2.11.0",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+
