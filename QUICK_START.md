@@ -38,6 +38,8 @@ Mở file `examples/client-example.html` trong browser và test các chức năn
 
 ### Option 2: Dùng curl
 
+#### Trên Linux/Mac/Git Bash:
+
 **Health check:**
 ```bash
 curl http://localhost:3000/health
@@ -57,6 +59,86 @@ curl -X POST http://localhost:3000/api/print \
 ```bash
 curl -X POST http://localhost:3000/api/cash-drawer/open
 ```
+
+#### Trên Windows:
+
+**⚠️ Lưu ý quan trọng:** Trong PowerShell, `curl` là alias của `Invoke-WebRequest` (cú pháp khác). Để dùng curl thật, bạn cần dùng `curl.exe` hoặc dùng các phương pháp dưới đây.
+
+**Cách 1: Dùng curl.exe trong PowerShell (khuyên dùng)**
+
+**Health check:**
+```powershell
+curl.exe http://localhost:3000/health
+```
+
+**Test in:**
+```powershell
+curl.exe -X POST http://localhost:3000/api/print `
+  -H "Content-Type: application/json" `
+  -d '{\"text\": \"Test XPrinter XP 80C\n\nHello World!\", \"align\": \"center\"}'
+```
+
+Hoặc dùng file JSON (dễ hơn):
+```powershell
+# Tạo file data.json
+@'
+{
+  "text": "Test XPrinter XP 80C\n\nHello World!",
+  "align": "center"
+}
+'@ | Out-File -FilePath data.json -Encoding utf8
+
+# Chạy curl
+curl.exe -X POST http://localhost:3000/api/print -H "Content-Type: application/json" -d "@data.json"
+```
+
+**Test cash drawer:**
+```powershell
+curl.exe -X POST http://localhost:3000/api/cash-drawer/open
+```
+
+**Cách 2: Dùng Invoke-RestMethod (PowerShell native)**
+
+**Health check:**
+```powershell
+Invoke-RestMethod -Uri http://localhost:3000/health -Method Get
+```
+
+**Test in:**
+```powershell
+$body = @{
+    text = "Test XPrinter XP 80C`n`nHello World!"
+    align = "center"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri http://localhost:3000/api/print -Method Post -Body $body -ContentType "application/json"
+```
+
+**Test cash drawer:**
+```powershell
+Invoke-RestMethod -Uri http://localhost:3000/api/cash-drawer/open -Method Post
+```
+
+**Cách 3: Dùng CMD (Command Prompt)**
+
+**Health check:**
+```cmd
+curl http://localhost:3000/health
+```
+
+**Test in:**
+```cmd
+curl -X POST http://localhost:3000/api/print -H "Content-Type: application/json" -d "{\"text\": \"Test XPrinter XP 80C\n\nHello World!\", \"align\": \"center\"}"
+```
+
+**Test cash drawer:**
+```cmd
+curl -X POST http://localhost:3000/api/cash-drawer/open
+```
+
+**Cách 4: Dùng Git Bash hoặc WSL (giống Linux/Mac)**
+
+Nếu đã cài Git, mở Git Bash và chạy các lệnh giống như phần "Trên Linux/Mac/Git Bash" ở trên.
 
 ## Bước 5: Tích hợp vào POS
 

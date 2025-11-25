@@ -1,5 +1,6 @@
 const ThermalPrinter = require('node-thermal-printer').printer;
 const PrinterTypes = require('node-thermal-printer').types;
+const net = require('net');
 
 class PrinterService {
   constructor() {
@@ -58,70 +59,167 @@ class PrinterService {
         encoding = 'utf8'
       } = options;
 
-      if (!this.printer) {
-        this.init();
-      }
+      console.log(`📝 Print request: ${text.substring(0, 50)}...`);
 
-      // Clear printer buffer
-      this.printer.clear();
+      // Build ESC/POS commands directly
+      let printData = Buffer.alloc(0);
+
+      // Initialize printer (ESC @)
+      printData = Buffer.concat([printData, Buffer.from([0x1B, 0x40])]);
 
       // Set alignment
       switch (align.toLowerCase()) {
         case 'center':
-          this.printer.alignCenter();
+          printData = Buffer.concat([printData, Buffer.from([0x1B, 0x61, 0x01])]); // ESC a 1
           break;
         case 'right':
-          this.printer.alignRight();
+          printData = Buffer.concat([printData, Buffer.from([0x1B, 0x61, 0x02])]); // ESC a 2
           break;
         default:
-          this.printer.alignLeft();
+          printData = Buffer.concat([printData, Buffer.from([0x1B, 0x61, 0x00])]); // ESC a 0
       }
 
-      // Print content based on type
+      // Print content
       if (type === 'text' || type === 'html') {
-        // Split text by lines and print
         const lines = text.split('\n');
         lines.forEach(line => {
-          if (line.trim()) {
-            this.printer.println(line);
-          } else {
-            this.printer.newLine();
-          }
+          // Use ASCII encoding for better compatibility with XPrinter
+          const lineBuffer = Buffer.from(line + '\n', 'ascii');
+          printData = Buffer.concat([printData, lineBuffer]);
         });
       } else if (type === 'raw') {
-        // For raw ESC/POS commands
-        this.printer.raw(Buffer.from(text, encoding));
+        printData = Buffer.concat([printData, Buffer.from(text, encoding)]);
       }
 
-      // Execute print
-      await this.printer.execute();
-      
-      return { success: true };
+      // Add line feed and cut paper (GS V 0)
+      printData = Buffer.concat([printData, Buffer.from([0x0A])]); // Line feed
+      printData = Buffer.concat([printData, Buffer.from([0x1D, 0x56, 0x00])]); // Cut paper
+
+      console.log(`📤 Sending ${printData.length} bytes to printer...`);
+
+      // Send directly via TCP socket
+      return new Promise((resolve, reject) => {
+        const client = new net.Socket();
+        
+        client.setTimeout(5000);
+        
+        client.on('connect', () => {
+          console.log(`✅ Connected to printer for printing`);
+          client.write(printData, (err) => {
+            if (err) {
+              console.error('❌ Write error:', err);
+              reject(new Error(`Failed to write data: ${err.message}`));
+            } else {
+              console.log(`✅ Data written, waiting before close...`);
+              // Wait a bit to ensure data is sent before closing
+              setTimeout(() => {
+                client.end();
+              }, 200);
+            }
+          });
+        });
+        
+        client.on('close', () => {
+          console.log(`✅ Print data sent successfully`);
+          resolve({ success: true });
+        });
+        
+        client.on('error', (error) => {
+          console.error('❌ Print connection error:', error);
+          reject(new Error(`Failed to print: ${error.message}`));
+        });
+        
+        client.on('timeout', () => {
+          console.error('❌ Print connection timeout');
+          client.destroy();
+          reject(new Error('Connection timeout'));
+        });
+        
+        // Connect to printer
+        client.connect(
+          this.connectionParams.port,
+          this.connectionParams.ip,
+          () => {
+            // Connection established
+          }
+        );
+      });
     } catch (error) {
-      console.error('Print execution error:', error);
+      console.error('❌ Print execution error:', error);
       throw new Error(`Print failed: ${error.message}`);
     }
   }
 
   async openCashDrawer() {
     try {
-      if (!this.printer) {
-        this.init();
-      }
-
-      this.printer.clear();
+      const drawerPin = parseInt(process.env.CASH_DRAWER_PIN || 2);
+      const m = drawerPin === 2 ? 0 : 1; // 0 for pin 2, 1 for pin 5
       
-      // Open cash drawer command (ESC/POS command)
-      // Pin 2 = typically the cash drawer pin for XPrinter and most ESC/POS printers
-      // XPrinter XP 80C sử dụng pin 2
-      const drawerPin = process.env.CASH_DRAWER_PIN || 2;
-      this.printer.cashdraw(parseInt(drawerPin));
+      console.log(`💰 Opening cash drawer (pin ${drawerPin})...`);
       
-      await this.printer.execute();
+      // Raw ESC/POS command: ESC p m t1 t2
+      // ESC p = 0x1B 0x70
+      // m = pin selection (0 = pin 2, 1 = pin 5)
+      // t1 = 25ms = 0x19
+      // t2 = 250ms = 0xFA
+      const cashDrawerCommand = Buffer.from([
+        0x1B, 0x70, // ESC p
+        m,          // pin selection (0 = pin 2, 1 = pin 5)
+        0x19,       // t1 = 25ms
+        0xFA        // t2 = 250ms
+      ]);
       
-      return { success: true };
+      console.log(`📤 Sending cash drawer command: ${cashDrawerCommand.toString('hex')}`);
+      
+      // Send command directly via TCP socket
+      return new Promise((resolve, reject) => {
+        const client = new net.Socket();
+        
+        client.setTimeout(5000);
+        
+        client.on('connect', () => {
+          console.log(`✅ Connected to printer for cash drawer`);
+          client.write(cashDrawerCommand, (err) => {
+            if (err) {
+              console.error('❌ Write error:', err);
+              reject(new Error(`Failed to write cash drawer command: ${err.message}`));
+            } else {
+              console.log(`✅ Cash drawer command written, waiting before close...`);
+              // Wait a bit before closing to ensure command is sent
+              setTimeout(() => {
+                client.end();
+              }, 200);
+            }
+          });
+        });
+        
+        client.on('close', () => {
+          console.log(`✅ Cash drawer command sent (pin ${drawerPin})`);
+          resolve({ success: true });
+        });
+        
+        client.on('error', (error) => {
+          console.error('❌ Cash drawer connection error:', error);
+          reject(new Error(`Failed to open cash drawer: ${error.message}`));
+        });
+        
+        client.on('timeout', () => {
+          console.error('❌ Cash drawer connection timeout');
+          client.destroy();
+          reject(new Error('Connection timeout'));
+        });
+        
+        // Connect to printer
+        client.connect(
+          this.connectionParams.port,
+          this.connectionParams.ip,
+          () => {
+            // Connection established
+          }
+        );
+      });
     } catch (error) {
-      console.error('Cash drawer error:', error);
+      console.error('❌ Cash drawer error:', error);
       throw new Error(`Failed to open cash drawer: ${error.message}`);
     }
   }
