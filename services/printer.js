@@ -100,49 +100,78 @@ class PrinterService {
       // Send directly via TCP socket
       return new Promise((resolve, reject) => {
         const client = new net.Socket();
+        let isResolved = false;
         
         client.setTimeout(5000);
+        
+        // Helper function to cleanup socket
+        const cleanup = () => {
+          if (!client.destroyed) {
+            try {
+              client.destroy();
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }
+        };
+        
+        // Helper function to resolve/reject only once
+        const finish = (result, error) => {
+          if (isResolved) return;
+          isResolved = true;
+          cleanup();
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        };
         
         client.on('connect', () => {
           console.log(`✅ Connected to printer for printing`);
           client.write(printData, (err) => {
             if (err) {
               console.error('❌ Write error:', err);
-              reject(new Error(`Failed to write data: ${err.message}`));
+              finish(null, new Error(`Failed to write data: ${err.message}`));
             } else {
               console.log(`✅ Data written, waiting before close...`);
               // Wait a bit to ensure data is sent before closing
               setTimeout(() => {
-                client.end();
+                finish({ success: true });
               }, 200);
             }
           });
         });
         
         client.on('close', () => {
-          console.log(`✅ Print data sent successfully`);
-          resolve({ success: true });
+          if (!isResolved) {
+            console.log(`✅ Print data sent successfully`);
+            finish({ success: true });
+          }
         });
         
         client.on('error', (error) => {
-          console.error('❌ Print connection error:', error);
-          reject(new Error(`Failed to print: ${error.message}`));
+          console.error('❌ Print connection error:', error.message);
+          finish(null, new Error(`Failed to print: ${error.message}`));
         });
         
         client.on('timeout', () => {
           console.error('❌ Print connection timeout');
-          client.destroy();
-          reject(new Error('Connection timeout'));
+          finish(null, new Error('Connection timeout'));
         });
         
         // Connect to printer
-        client.connect(
-          this.connectionParams.port,
-          this.connectionParams.ip,
-          () => {
-            // Connection established
-          }
-        );
+        try {
+          client.connect(
+            this.connectionParams.port,
+            this.connectionParams.ip,
+            () => {
+              // Connection established
+            }
+          );
+        } catch (error) {
+          finish(null, new Error(`Failed to connect: ${error.message}`));
+        }
       });
     } catch (error) {
       console.error('❌ Print execution error:', error);
@@ -174,49 +203,78 @@ class PrinterService {
       // Send command directly via TCP socket
       return new Promise((resolve, reject) => {
         const client = new net.Socket();
+        let isResolved = false;
         
         client.setTimeout(5000);
+        
+        // Helper function to cleanup socket
+        const cleanup = () => {
+          if (!client.destroyed) {
+            try {
+              client.destroy();
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }
+        };
+        
+        // Helper function to resolve/reject only once
+        const finish = (result, error) => {
+          if (isResolved) return;
+          isResolved = true;
+          cleanup();
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        };
         
         client.on('connect', () => {
           console.log(`✅ Connected to printer for cash drawer`);
           client.write(cashDrawerCommand, (err) => {
             if (err) {
               console.error('❌ Write error:', err);
-              reject(new Error(`Failed to write cash drawer command: ${err.message}`));
+              finish(null, new Error(`Failed to write cash drawer command: ${err.message}`));
             } else {
               console.log(`✅ Cash drawer command written, waiting before close...`);
               // Wait a bit before closing to ensure command is sent
               setTimeout(() => {
-                client.end();
+                finish({ success: true });
               }, 200);
             }
           });
         });
         
         client.on('close', () => {
-          console.log(`✅ Cash drawer command sent (pin ${drawerPin})`);
-          resolve({ success: true });
+          if (!isResolved) {
+            console.log(`✅ Cash drawer command sent (pin ${drawerPin})`);
+            finish({ success: true });
+          }
         });
         
         client.on('error', (error) => {
-          console.error('❌ Cash drawer connection error:', error);
-          reject(new Error(`Failed to open cash drawer: ${error.message}`));
+          console.error('❌ Cash drawer connection error:', error.message);
+          finish(null, new Error(`Failed to open cash drawer: ${error.message}`));
         });
         
         client.on('timeout', () => {
           console.error('❌ Cash drawer connection timeout');
-          client.destroy();
-          reject(new Error('Connection timeout'));
+          finish(null, new Error('Connection timeout'));
         });
         
         // Connect to printer
-        client.connect(
-          this.connectionParams.port,
-          this.connectionParams.ip,
-          () => {
-            // Connection established
-          }
-        );
+        try {
+          client.connect(
+            this.connectionParams.port,
+            this.connectionParams.ip,
+            () => {
+              // Connection established
+            }
+          );
+        } catch (error) {
+          finish(null, new Error(`Failed to connect: ${error.message}`));
+        }
       });
     } catch (error) {
       console.error('❌ Cash drawer error:', error);

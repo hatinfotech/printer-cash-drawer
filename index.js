@@ -45,10 +45,13 @@ app.post('/api/print', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Print error:', error);
+    console.error('Print error:', error.message);
+    // Luôn trả về response, không throw để service tiếp tục chạy
     res.status(500).json({ 
+      success: false,
       error: 'Failed to print', 
-      message: error.message 
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -64,10 +67,13 @@ app.post('/api/cash-drawer/open', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Cash drawer error:', error);
+    console.error('Cash drawer error:', error.message);
+    // Luôn trả về response, không throw để service tiếp tục chạy
     res.status(500).json({ 
+      success: false,
       error: 'Failed to open cash drawer', 
-      message: error.message 
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -82,10 +88,13 @@ app.get('/api/printer/status', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Status error:', error);
+    console.error('Status error:', error.message);
+    // Luôn trả về response, không throw để service tiếp tục chạy
     res.status(500).json({ 
+      success: false,
       error: 'Failed to get printer status', 
-      message: error.message 
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -98,13 +107,33 @@ app.listen(PORT, 'localhost', () => {
   console.log(`💰 Cash drawer endpoint: POST http://localhost:${PORT}/api/cash-drawer/open\n`);
 });
 
+// Global error handlers để service không bị crash
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  // Không exit, tiếp tục chạy service
+  // Log error và tiếp tục phục vụ các request khác
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise);
+  console.error('Reason:', reason);
+  // Không exit, tiếp tục chạy service
+});
+
 // Handle graceful shutdown
+let isShuttingDown = false;
+
 process.on('SIGTERM', () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
   console.log('SIGTERM signal received: closing HTTP server');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
   console.log('SIGINT signal received: closing HTTP server');
   process.exit(0);
 });
