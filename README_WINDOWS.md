@@ -40,6 +40,19 @@ Service sẽ chạy tại: `http://localhost:3000`
 
 Hoặc nhấn `Ctrl+C` trong cửa sổ đang chạy service.
 
+## 🔧 Cài đặt như Windows Service (Tự động khởi động cùng Windows)
+
+Để service tự động khởi động cùng Windows:
+
+1. **Right-click vào `install-service.bat`**
+2. **Chọn "Run as administrator"**
+3. Service sẽ được cài đặt và tự động khởi động
+
+Xem chi tiết: [SERVICE_SETUP.md](SERVICE_SETUP.md)
+
+**Gỡ cài đặt service:**
+- Right-click `uninstall-service.bat` → Run as administrator
+
 ## ✅ Kiểm tra service
 
 Mở browser và truy cập: `http://localhost:3000/health`
